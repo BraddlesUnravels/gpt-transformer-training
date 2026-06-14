@@ -1,5 +1,4 @@
-import torch 
-from config import batch_size, block_size, device
+import torch
 
 class TextDataset:
   def __init__(self, text, tokenizer, train_frac=0.9):
@@ -14,7 +13,7 @@ class TextDataset:
     print(f"Val tokens: {len(self.val_data):,}")
 
 
-  def get_batch(self, split):
+  def get_batch(self, split, batch_size, block_size, device):
     data_source = self.train_data if split == "train" else self.val_data
 
     ix = torch.randint(

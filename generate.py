@@ -1,33 +1,59 @@
+import argparse
+
 import torch
 
-from config import device
-from tokenizer import BPETokenizer
+from config import load_config
 from model import Transformer
+from tokenizer import BPETokenizer
 
-tokenizer = BPETokenizer("tokenizer.json")
 
-checkpoint = torch.load("model.pt", map_location=device)
+def parse_args():
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--config", default=None, help="Path to a JSON config file")
+  parser.add_argument("--checkpoint", default="model.pt", help="Path to checkpoint file")
+  parser.add_argument("--prompt", default=None, help="Prompt text; if not provided uses interactive input")
+  parser.add_argument("--max-new-tokens", type=int, default=None)
+  parser.add_argument("--temperature", type=float, default=None)
+  parser.add_argument("--top-k", type=int, default=None)
+  return parser.parse_args()
 
-vocab_size = checkpoint["vocab_size"]
 
-model = Transformer(checkpoint["vocab_size"])
-model.load_state_dict(checkpoint["model_state_dict"])
-model = model.to(device)
-model.eval()
+def main():
+  args = parse_args()
+  config = load_config(args.config)
+  device = config["device"]
+  tokenizer_config = config["tokenizer"]
+  model_config = config["model"]
+  generation_config = config["generation"]
 
-prompt = input("Prompt: ")
+  tokenizer = BPETokenizer(tokenizer_config["tokenizer_path"])
+  checkpoint = torch.load(args.checkpoint, map_location=device)
 
-context = torch.tensor(
-  [tokenizer.encode(prompt)],
-  dtype=torch.long,
-  device=device
-)
+  model = Transformer(checkpoint["vocab_size"], model_config, device)
+  model.load_state_dict(checkpoint["model_state_dict"])
+  model = model.to(device)
+  model.eval()
 
-generated = model.generate(
+  prompt = args.prompt or input("Prompt: ")
+  max_new_tokens = args.max_new_tokens or generation_config["max_new_tokens"]
+  temperature = args.temperature or generation_config["temperature"]
+  top_k = args.top_k or generation_config["top_k"]
+
+  context = torch.tensor(
+    [tokenizer.encode(prompt)],
+    dtype=torch.long,
+    device=device
+  )
+
+  generated = model.generate(
     context,
-    max_new_tokens=200,
-    temperature=0.6,
-    top_k=20
-)[0].tolist()
+    max_new_tokens=max_new_tokens,
+    temperature=temperature,
+    top_k=top_k
+  )[0].tolist()
 
-print(tokenizer.decode(generated))
+  print(tokenizer.decode(generated))
+
+
+if __name__ == "__main__":
+  main()

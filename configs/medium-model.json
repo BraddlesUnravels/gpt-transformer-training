@@ -1,0 +1,16 @@
+{
+  "name": "medium-model",
+  "model": {
+    "n_embed": 192,
+    "n_head": 6,
+    "n_layer": 6,
+    "dropout": 0.1
+  },
+  "train": {
+    "max_iterations": 3000,
+    "eval_interval": 300
+  },
+  "tokenizer": {
+    "vocab_size": 8000
+  }
+}

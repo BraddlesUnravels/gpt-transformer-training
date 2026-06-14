@@ -1,0 +1,17 @@
+{
+  "name": "tokenizer-16k",
+  "model": {
+    "n_embed": 128,
+    "n_head": 4,
+    "n_layer": 4,
+    "dropout": 0.1
+  },
+  "train": {
+    "max_iterations": 3000,
+    "eval_interval": 300
+  },
+  "tokenizer": {
+    "vocab_size": 16000,
+    "tokenizer_path": "tokenizer-16k.json"
+  }
+}

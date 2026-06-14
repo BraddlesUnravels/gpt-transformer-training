@@ -2,10 +2,9 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-from config import block_size, n_embed, n_head, n_layer, dropout, device
 
 class Head(nn.Module):
-  def __init__(self, head_size):
+  def __init__(self, n_embed, block_size, dropout, head_size):
     super().__init__()
 
     self.key = nn.Linear(n_embed, head_size, bias=False)
@@ -20,41 +19,43 @@ class Head(nn.Module):
     self.dropout = nn.Dropout(dropout)
 
   def forward(self, x):
-      B, T, C = x.shape
+    _, T, _ = x.shape
 
-      k = self.key(x)
-      q = self.query(x)
+    k = self.key(x)
+    q = self.query(x)
 
-      wei = q @ k.transpose(-2,-1) * k.shape[-1] ** -0.5
-      wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf"))
-      wei = F.softmax(wei, dim=-1)
-      wei = self.dropout(wei)
+    wei = q @ k.transpose(-2, -1) * k.shape[-1] ** -0.5
+    wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf"))
+    wei = F.softmax(wei, dim=-1)
+    wei = self.dropout(wei)
 
-      v = self.value(x)
-      out = wei @ v
+    v = self.value(x)
+    out = wei @ v
 
-      return out
-    
+    return out
+
+
 class MultiHeadAttention(nn.Module):
-  def __init__(self, num_heads, head_size):
+  def __init__(self, n_embed, block_size, dropout, num_heads, head_size):
     super().__init__()
-  
+
     self.heads = nn.ModuleList([
-      Head(head_size) for _ in range(num_heads)
+      Head(n_embed, block_size, dropout, head_size) for _ in range(num_heads)
     ])
 
     self.proj = nn.Linear(n_embed, n_embed)
     self.dropout = nn.Dropout(dropout)
-  
+
   def forward(self, x):
     out = torch.cat([head(x) for head in self.heads], dim=-1)
     out = self.proj(out)
     out = self.dropout(out)
 
     return out
-    
+
+
 class FeedForward(nn.Module):
-  def __init__(self):
+  def __init__(self, n_embed, dropout):
     super().__init__()
 
     self.net = nn.Sequential(
@@ -63,48 +64,57 @@ class FeedForward(nn.Module):
       nn.Linear(4 * n_embed, n_embed),
       nn.Dropout(dropout)
     )
-  
+
   def forward(self, x):
     return self.net(x)
-  
+
+
 class Block(nn.Module):
-  def __init__(self):
+  def __init__(self, n_embed, n_head, block_size, dropout):
     super().__init__()
 
     head_size = n_embed // n_head
 
-    self.sa = MultiHeadAttention(n_head, head_size)
-    self.ffwd = FeedForward()
+    self.sa = MultiHeadAttention(n_embed, block_size, dropout, n_head, head_size)
+    self.ffwd = FeedForward(n_embed, dropout)
 
     self.ln1 = nn.LayerNorm(n_embed)
     self.ln2 = nn.LayerNorm(n_embed)
-  
+
   def forward(self, x):
     x = x + self.sa(self.ln1(x))
     x = x + self.ffwd(self.ln2(x))
 
     return x
-  
+
+
 class Transformer(nn.Module):
-  def __init__(self, vocab_size):
+  def __init__(self, vocab_size, model_config, device):
     super().__init__()
 
+    self.block_size = model_config["block_size"]
+    self.device = device
+    n_embed = model_config["n_embed"]
+    n_head = model_config["n_head"]
+    n_layer = model_config["n_layer"]
+    dropout = model_config["dropout"]
+
     self.token_embedding_table = nn.Embedding(vocab_size, n_embed)
-    self.position_embedding_table = nn.Embedding(block_size, n_embed)
+    self.position_embedding_table = nn.Embedding(self.block_size, n_embed)
 
     self.blocks = nn.Sequential(*[
-      Block() for _ in range(n_layer)
+      Block(n_embed, n_head, self.block_size, dropout) for _ in range(n_layer)
     ])
 
     self.ln_f = nn.LayerNorm(n_embed)
     self.lm_head = nn.Linear(n_embed, vocab_size)
-  
+
   def forward(self, idx, targets=None):
-    B, T = idx.shape
+    _, T = idx.shape
 
     tok_emd = self.token_embedding_table(idx)
     pos_emd = self.position_embedding_table(
-      torch.arange(T, device=device)
+      torch.arange(T, device=self.device)
     )
 
     x = tok_emd + pos_emd
@@ -115,22 +125,20 @@ class Transformer(nn.Module):
 
     if targets is None:
       loss = None
-    else:
-      B, T, C = logits.shape
+      return logits, loss
 
-      logits = logits.view(B * T, C)
-      targets = targets.view(B * T)
+    _, _, C = logits.shape
+    logits = logits.view(-1, C)
+    targets = targets.view(-1)
+    loss = F.cross_entropy(logits, targets)
 
-      loss = F.cross_entropy(logits, targets)
-    
     return logits, loss
-  
+
   def generate(self, idx, max_new_tokens, temperature, top_k):
     for _ in range(max_new_tokens):
-      idx_cond = idx[:, -block_size:]
+      idx_cond = idx[:, -self.block_size:]
 
-      logits, loss = self(idx_cond)
-
+      logits, _ = self(idx_cond)
       logits = logits[:, -1, :]
       logits = logits / temperature
 
@@ -139,10 +147,7 @@ class Transformer(nn.Module):
         logits[logits < values[:, [-1]]] = -float("inf")
 
       probs = F.softmax(logits, dim=-1)
-
       idx_next = torch.multinomial(probs, num_samples=1)
-
       idx = torch.cat((idx, idx_next), dim=-1)
-    
-    return idx
 
+    return idx
