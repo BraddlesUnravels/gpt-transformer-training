@@ -2,3 +2,5 @@
 **/input.txt
 runs/
 .env
+**/tokenizer.json
+**/tokenizer-16k.json

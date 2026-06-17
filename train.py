@@ -1,5 +1,7 @@
 import argparse
 import json
+import select
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -28,6 +30,41 @@ def make_run_dir(run_name):
   (run_dir / "checkpoints").mkdir(parents=True, exist_ok=True)
   (run_dir / "samples").mkdir(parents=True, exist_ok=True)
   return run_dir
+
+
+def read_stdin_chunk(chunk_size, timeout_seconds):
+
+  ready, _, _ = select.select([sys.stdin], [], [], timeout_seconds)
+
+  if not ready:
+    raise TimeoutError(
+      f"Timed out waiting for streamed input after {timeout_seconds} seconds"
+    )
+
+  return sys.stdin.read(chunk_size)
+
+
+def iter_text_chunks(chunk_size, timeout_seconds):
+  if chunk_size <= 0:
+    raise ValueError("stream_chunk_size must be greater than 0")
+
+  if sys.stdin.isatty():
+    raise ValueError("No streamed input detected on stdin")
+
+  first_chunk = read_stdin_chunk(chunk_size, timeout_seconds)
+
+  if not first_chunk:
+    raise ValueError("No streamed input received on stdin")
+
+  yield first_chunk
+
+  while True:
+    chunk = read_stdin_chunk(chunk_size, timeout_seconds)
+
+    if not chunk:
+      break
+
+    yield chunk
 
 
 @torch.no_grad()
@@ -89,14 +126,22 @@ def main():
   model_config = config["model"]
   train_config = config["train"]
   generation_config = config["generation"]
+  project_root = Path(__file__).resolve().parent
+  tokenizer_path = Path(tokenizer_config["tokenizer_path"])
+  stream_read_timeout_seconds = data_config.get("stream_read_timeout_seconds", 120)
+
+  if not tokenizer_path.is_absolute():
+    tokenizer_path = project_root / tokenizer_path
 
   torch.manual_seed(seed)
 
-  with open(data_config["input_path"], "r", encoding="utf-8") as f:
-    text = f.read()
 
-  tokenizer = BPETokenizer(tokenizer_config["tokenizer_path"])
-  dataset = TextDataset(text, tokenizer, train_frac=data_config["train_frac"])
+  tokenizer = BPETokenizer(str(tokenizer_path))
+  text_stream = iter_text_chunks(
+    data_config["stream_chunk_size"],
+    stream_read_timeout_seconds
+  )
+  dataset = TextDataset(text_stream, tokenizer, train_frac=data_config["train_frac"])
 
   model = Transformer(tokenizer.vocab_size, model_config, device)
   model.to(device)

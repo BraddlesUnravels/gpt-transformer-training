@@ -7,10 +7,11 @@
     "dropout": 0.1
   },
   "train": {
-    "max_iterations": 3000,
-    "eval_interval": 300
+    "max_iterations": 10000,
+    "eval_interval": 200,
+    "learning_rate": 3e-4
   },
   "tokenizer": {
-    "vocab_size": 8000
+    "vocab_size": 10000
   }
 }

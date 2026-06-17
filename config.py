@@ -1,4 +1,5 @@
 import json
+import sys
 from copy import deepcopy
 from pathlib import Path
 
@@ -9,8 +10,10 @@ DEFAULT_CONFIG = {
   "seed": 1337,
   "device": "mps" if torch.backends.mps.is_available() else "cpu",
   "data": {
-    "input_path": "data/input.txt",
-    "train_frac": 0.9
+    "train_frac": 0.9,
+    "stream_chunk_size": 1048576,
+    "stream_read_timeout_seconds": 120,
+    "stream_command": [sys.executable, "stream_fineweb.py"]
   },
   "tokenizer": {
     "tokenizer_path": "tokenizer.json",
