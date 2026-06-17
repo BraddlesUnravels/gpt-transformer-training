@@ -8,10 +8,10 @@ from pathlib import Path
 
 import torch
 
-from config import load_config
-from dataset import TextDataset
-from model import Transformer
-from tokenizer import BPETokenizer
+from src.configs.config import load_config
+from src.data.dataset import TextDataset
+from src.tranformer.model import Transformer
+from src.tokenizer.tokenizer import BPETokenizer
 
 
 def parse_args():

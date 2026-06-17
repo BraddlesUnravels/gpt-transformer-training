@@ -1,6 +1,7 @@
-.venv
-**/input.txt
+
 runs/
+.venv
 .env
-tokenizer.json
-tokenizer-16k.json
+small_model_tokenizer.json
+medium_model_tokenizer.json
+larger_model_tokenizer-16k.json

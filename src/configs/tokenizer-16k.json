@@ -1,0 +1,20 @@
+{
+  "name": "tokenizer-16k",
+  "model": {
+    "block_size": 128,
+    "n_embed": 192,
+    "n_head": 6,
+    "n_layer": 6,
+    "dropout": 0.1
+  },
+  "train": {
+    "batch_size": 64,
+    "max_iterations": 15000,
+    "eval_interval": 300,
+    "learning_rate": 2e-4
+  },
+  "tokenizer": {
+    "vocab_size": 16000,
+    "tokenizer_path": "larger_model_tokenizer-16k.json"
+  }
+}

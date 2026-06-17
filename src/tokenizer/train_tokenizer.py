@@ -9,7 +9,7 @@ from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import ByteLevel
 from tokenizers.trainers import BpeTrainer
 
-from config import load_config
+from src.configs.config import load_config
 
 
 def parse_args():

@@ -2,9 +2,9 @@ import argparse
 
 import torch
 
-from config import load_config
-from model import Transformer
-from tokenizer import BPETokenizer
+from src.configs.config import load_config
+from src.tranformer.model import Transformer
+from src.tokenizer.tokenizer import BPETokenizer
 
 
 def parse_args():

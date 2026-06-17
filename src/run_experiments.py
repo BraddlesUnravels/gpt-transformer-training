@@ -2,7 +2,7 @@ import argparse
 import shlex
 import subprocess
 import sys
-from config import load_config
+from src.configs.config import load_config
 
 
 DEFAULT_CONFIGS = [
