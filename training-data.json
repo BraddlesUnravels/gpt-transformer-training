@@ -1,0 +1,18 @@
+{
+  "c4": {
+   "name": "allenai/c4",
+   "subset": "en",
+   "text_columns": [
+      "text"
+    ],
+    "no_rows": "365,000,000"
+  },
+  "fine_web": {
+    "name": "HuggingFaceFW/fineweb",
+    "subset": "CC-MAIN-2025-26",
+    "text_columns": [
+      "text"
+    ],
+    "no_rows": "52,453,695,892"
+  }
+}
